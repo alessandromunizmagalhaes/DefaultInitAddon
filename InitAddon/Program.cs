@@ -68,6 +68,8 @@ namespace InitAddon
                         }
                     );
 
+                // meu comentário
+
                 SAPDatabase.CriarTabela(tabela_upd_teste);
 
                 oCompany.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_Commit);
