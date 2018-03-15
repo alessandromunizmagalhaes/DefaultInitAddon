@@ -46,6 +46,17 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Coluna.cs" />
+    <Compile Include="ColunaDate.cs" />
+    <Compile Include="ColunaImage.cs" />
+    <Compile Include="ColunaInt.cs" />
+    <Compile Include="ColunaLink.cs" />
+    <Compile Include="ColunaPercent.cs" />
+    <Compile Include="ColunaPrice.cs" />
+    <Compile Include="ColunaQuantity.cs" />
+    <Compile Include="ColunaSum.cs" />
+    <Compile Include="ColunaText.cs" />
+    <Compile Include="ColunaTime.cs" />
+    <Compile Include="ColunaVarchar.cs" />
     <Compile Include="CustomException.cs" />
     <Compile Include="SAPConnection.cs" />
     <Compile Include="Dialogs.cs" />
@@ -54,6 +65,7 @@
     <Compile Include="SAPDatabase.cs" />
     <Compile Include="SAPMenus.cs" />
     <Compile Include="Tabela.cs" />
+    <Compile Include="ValorValido.cs" />
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>

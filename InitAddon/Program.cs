@@ -48,20 +48,29 @@ namespace InitAddon
 
             try
             {
+                oCompany.StartTransaction();
+
                 var tabela_upd_teste = new Tabela(
                         "UPD_PCK_TESTE"
                         , "Apenas uma tabela de teste"
                         , SAPbobsCOM.BoUTBTableType.bott_MasterData
-                        , new List<Coluna>() {
-                              new Coluna("varchar", "um teste", ColunaTipo.Varchar, 10)
-                            , new Coluna("date", "dois teste", ColunaTipo.Date)
-                            , new Coluna("int", "três teste", ColunaTipo.Int)
-                            , new Coluna("perc", "quatro teste", ColunaTipo.Percent, 10)
+                        , new List<Coluna>()
+                        {
+                            new ColunaVarchar("varchar","campo de varchar",false,"",100, new List<ValorValido>(){
+                                new ValorValido("1", "um"),
+                                new ValorValido("2", "dois"),
+                                new ValorValido("3", "três"),
+                                new ValorValido("4", "quatro"),
+                            }),
+                            new ColunaDate("date","coluna date",true),
+                            new ColunaTime("time", "coluna time", false),
+                            new ColunaInt("int", "coluna int", true, "2",7),
                         }
-                );
+                    );
 
-                SAPDatabase.ExcluirTabela(tabela_upd_teste.NomeSemArroba);
                 SAPDatabase.CriarTabela(tabela_upd_teste);
+
+                oCompany.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_Commit);
             }
             catch (CustomException e)
             {
@@ -69,6 +78,7 @@ namespace InitAddon
             }
             catch (Exception e)
             {
+                oCompany.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_RollBack);
                 Dialogs.PopupError("Erro interno.\nErro: " + e.Message);
             }
         }
