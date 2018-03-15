@@ -14,17 +14,93 @@ namespace InitAddon
             {
                 CriarUserTable(tabela);
 
+                bool tabela_is_UDO = tabela is TabelaUDO;
+                TabelaUDO tabelaUDO = tabela_is_UDO ? (TabelaUDO)tabela : null;
+
+                if (tabela_is_UDO)
+                {
+                    CriarTabelaComoUDO(tabelaUDO);
+                }
+
+                int i = 0;
                 foreach (var coluna in tabela.Colunas)
                 {
                     if (!ExisteColuna(tabela.NomeComArroba, coluna.Nome))
                     {
-                        CriarCampo(tabela.NomeComArroba, coluna);
+                        CriarColuna(tabela.NomeComArroba, coluna);
+
+                        if (tabela_is_UDO)
+                        {
+                            // tem que fazer essa gambiarra horrível, porque o primeiro elemento a ser colocado como UDO,
+                            // tem que obrigatóriamente ser o campo CODE.
+                            // como eu não passo ele como um campo que eu quero usar na Lista de Colunas
+                            // sempre que for o primeiro, passa o Code.
+                            // horroroso mas é o que tem pra hoje.
+                            if (i == 0)
+                            {
+                                CriarColunaComoUDO(tabelaUDO, new ColunaVarchar("Code", "Código", false));
+                            }
+
+                            CriarColunaComoUDO(tabelaUDO, coluna);
+                        }
                     }
+                    i++;
                 }
             }
         }
 
-        public static void CriarCampo(string nome_tabela, Coluna coluna)
+        private static void CriarColunaComoUDO(TabelaUDO tabela, Coluna coluna)
+        {
+            GC.Collect();
+            SAPbobsCOM.UserObjectsMD objUserObjectMD = oCompany.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oUserObjectsMD);
+            if (objUserObjectMD.GetByKey(tabela.NomeSemArroba))
+            {
+                objUserObjectMD.FormColumns.FormColumnAlias = coluna.Nome;
+                objUserObjectMD.FormColumns.FormColumnDescription = coluna.Descricao;
+                objUserObjectMD.FormColumns.Editable = SAPbobsCOM.BoYesNoEnum.tYES;
+                objUserObjectMD.FormColumns.Add();
+
+                if (objUserObjectMD.Update() != 0)
+                {
+                    throw new CustomException($"Erro ao tentar criar o campo {coluna.Nome} na tabela {tabela.NomeSemArroba} como UDO.\nErro: {oCompany.GetLastErrorDescription()}");
+                }
+            }
+
+            System.Runtime.InteropServices.Marshal.ReleaseComObject(objUserObjectMD);
+            objUserObjectMD = null;
+            GC.Collect();
+        }
+
+        private static void CriarTabelaComoUDO(TabelaUDO tabela)
+        {
+            GC.Collect();
+            SAPbobsCOM.UserObjectsMD objUserObjectMD = oCompany.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oUserObjectsMD);
+
+            objUserObjectMD.TableName = tabela.NomeSemArroba;
+            objUserObjectMD.Name = tabela.NomeSemArroba;
+            objUserObjectMD.Code = tabela.NomeSemArroba;
+
+            objUserObjectMD.CanCancel = tabela.CanCancel;
+            objUserObjectMD.CanClose = tabela.CanClose;
+            objUserObjectMD.CanCreateDefaultForm = tabela.CanCreateDefaultForm;
+            objUserObjectMD.CanDelete = tabela.CanDelete;
+            objUserObjectMD.CanFind = tabela.CanFind;
+            objUserObjectMD.CanLog = tabela.CanLog;
+            objUserObjectMD.CanYearTransfer = tabela.CanYearTransfer;
+            objUserObjectMD.ManageSeries = tabela.ManageSeries;
+            objUserObjectMD.ObjectType = tabela.ObjectType;
+
+            if (objUserObjectMD.Add() != 0)
+            {
+                throw new CustomException($"Erro ao tentar criar a tabela {tabela.NomeSemArroba} como UDO.\nErro: {oCompany.GetLastErrorDescription()}");
+            }
+
+            System.Runtime.InteropServices.Marshal.ReleaseComObject(objUserObjectMD);
+            objUserObjectMD = null;
+            GC.Collect();
+        }
+
+        public static void CriarColuna(string nome_tabela, Coluna coluna)
         {
             CriarUserField(nome_tabela, coluna);
 

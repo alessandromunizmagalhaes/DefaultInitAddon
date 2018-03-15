@@ -50,7 +50,7 @@ namespace InitAddon
             {
                 oCompany.StartTransaction();
 
-                var tabela_upd_teste = new Tabela(
+                var tabela_upd_teste = new TabelaUDO(
                         "UPD_PCK_TESTE"
                         , "Apenas uma tabela de teste"
                         , SAPbobsCOM.BoUTBTableType.bott_MasterData
@@ -65,10 +65,8 @@ namespace InitAddon
                             new ColunaDate("date","coluna date",true),
                             new ColunaTime("time", "coluna time", false),
                             new ColunaInt("int", "coluna int", true, "2",7),
-                        }
+                        }, new UDOParams()
                     );
-
-                // meu comentário
 
                 SAPDatabase.CriarTabela(tabela_upd_teste);
 
@@ -118,6 +116,4 @@ namespace InitAddon
 
         #endregion
     }
-
-
 }
