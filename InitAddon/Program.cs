@@ -50,25 +50,32 @@ namespace InitAddon
             {
                 oCompany.StartTransaction();
 
-                var tabela_upd_teste = new TabelaUDO(
-                        "UPD_PCK_TESTE"
-                        , "Apenas uma tabela de teste"
-                        , SAPbobsCOM.BoUTBTableType.bott_MasterData
-                        , new List<Coluna>()
-                        {
-                            new ColunaVarchar("varchar","campo de varchar",false,"",100, new List<ValorValido>(){
-                                new ValorValido("1", "um"),
-                                new ValorValido("2", "dois"),
-                                new ValorValido("3", "três"),
-                                new ValorValido("4", "quatro"),
-                            }),
-                            new ColunaDate("date","coluna date",true),
-                            new ColunaTime("time", "coluna time", false),
-                            new ColunaInt("int", "coluna int", true, "2",7),
-                        }, new UDOParams()
-                    );
+                var tabela_detalhe_item = new Tabela("U_UPD_CCD1", "Detalhes do item Previsto"
+                    , SAPbobsCOM.BoUTBTableType.bott_DocumentLines
+                    , new List<Coluna>() {
+                        new ColunaVarchar("ItemCode","Código do Item", 30, true),
+                        new ColunaVarchar("ItemName","Descrição do Item", 120, true),
+                        new ColunaPercent("PercItem","Percentagem Classe",true),
+                        new ColunaInt("teste","teste",true),
+                });
 
-                SAPDatabase.CriarTabela(tabela_upd_teste);
+                var tabela_contratos = new TabelaUDO("U_UPD_OCCD", "Definições Gerais do Contrato"
+                    , SAPbobsCOM.BoUTBTableType.bott_Document
+                    , new List<Coluna>() {
+                        new ColunaVarchar("CardCode","Código Fornecedor", 15,true, ""),
+                        new ColunaVarchar("CardName","Descrição Fornecedor", 100,true, ""),
+                        new ColunaVarchar("CtName","Pessoa de Contato", 50,true, ""),
+                        new ColunaVarchar("Tel1","Pessoa de Contato", 15,true, ""),
+                        new ColunaVarchar("EMail","E-mail", 50,true, ""),
+                        new ColunaDate("DtPrEnt","Data Previsão Entrega",true),
+                        new ColunaDate("DtPrPgt","Data Programa Entrega",true),
+                        new ColunaInt("ModCtto","Modalidade Contrato",true),
+                    }
+                    , new UDOParams() { CanDelete = SAPbobsCOM.BoYesNoEnum.tNO }
+                    , new List<Tabela>() { tabela_detalhe_item }
+                );
+
+                SAPDatabase.CriarTabela(tabela_contratos);
 
                 oCompany.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_Commit);
             }

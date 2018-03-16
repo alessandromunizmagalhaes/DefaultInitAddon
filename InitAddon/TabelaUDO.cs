@@ -7,7 +7,7 @@ namespace InitAddon
     {
         public TabelaUDO(string nome, string descricao, BoUTBTableType tipo, List<Coluna> colunas, UDOParams udoParams, List<Tabela> tabelasFilhas = null) : base(nome, descricao, tipo, colunas)
         {
-            if (tipo == BoUTBTableType.bott_NoObject || tipo == BoUTBTableType.bott_NoObjectAutoIncrement)
+            if (!TipoUDOValido(this))
                 throw new CustomException($"Erro ao instanciar tabela UDO. O tipo {tipo} não pode ser utilizado em tabelas UDO.");
 
             CanCancel = udoParams.CanCancel;
@@ -21,8 +21,35 @@ namespace InitAddon
 
             if (tabelasFilhas != null)
             {
+                foreach (var tabelaFilha in tabelasFilhas)
+                {
+                    if (!TipoTabelaFilhaIgualTipoTabelaPai(tabelaFilha, this))
+                    {
+                        throw new CustomException($"O tipo da tabela filha {tabelaFilha.NomeSemArroba} é diferente do tipo da tabela pai {this.NomeSemArroba}");
+                    }
+                }
+
                 TabelasFilhas = tabelasFilhas;
             }
+        }
+
+        private static bool TipoUDOValido(Tabela tabela)
+        {
+            return tabela.Tipo == BoUTBTableType.bott_Document || tabela.Tipo == BoUTBTableType.bott_MasterData;
+        }
+
+        private bool TipoTabelaFilhaIgualTipoTabelaPai(Tabela tabelaFilha, Tabela tabelaPai)
+        {
+            bool res = false;
+            if (tabelaPai.Tipo == BoUTBTableType.bott_MasterData)
+            {
+                res = tabelaFilha.Tipo == BoUTBTableType.bott_MasterDataLines;
+            }
+            else if (tabelaPai.Tipo == BoUTBTableType.bott_Document)
+            {
+                res = tabelaFilha.Tipo == BoUTBTableType.bott_DocumentLines;
+            }
+            return res;
         }
 
         public List<Tabela> TabelasFilhas { get; set; } = new List<Tabela>() { };
