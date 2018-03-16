@@ -22,53 +22,64 @@ namespace InitAddon
                     CriarTabelaComoUDO(tabelaUDO);
                 }
 
-                int i = 0;
                 foreach (var coluna in tabela.Colunas)
                 {
                     if (!ExisteColuna(tabela.NomeComArroba, coluna.Nome))
                     {
                         CriarColuna(tabela.NomeComArroba, coluna);
-
-                        if (tabela_is_UDO)
-                        {
-                            // tem que fazer essa gambiarra horrível, porque o primeiro elemento a ser colocado como UDO,
-                            // tem que obrigatóriamente ser o campo CODE.
-                            // como eu não passo ele como um campo que eu quero usar na Lista de Colunas
-                            // sempre que for o primeiro, passa o Code.
-                            // horroroso mas é o que tem pra hoje.
-                            if (i == 0)
-                            {
-                                CriarColunaComoUDO(tabelaUDO, new ColunaVarchar("Code", "Código", false));
-                            }
-
-                            CriarColunaComoUDO(tabelaUDO, coluna);
-                        }
                     }
-                    i++;
+                }
+
+                // não tem como ao mesmo tempo que criar uma coluna, já marcar ela como udo
+                // tem que criar todas as colunas e depois iterar denovo só pra adicionar o UDO
+                // regras SAP, senão vc não consegue adicionar o UDO via DI.
+                if (tabela_is_UDO)
+                {
+                    CriarColunaComoUDO(tabelaUDO);
                 }
             }
         }
 
-        private static void CriarColunaComoUDO(TabelaUDO tabela, Coluna coluna)
+        private static void CriarColunaComoUDO(TabelaUDO tabela)
         {
             GC.Collect();
             SAPbobsCOM.UserObjectsMD objUserObjectMD = oCompany.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oUserObjectsMD);
             if (objUserObjectMD.GetByKey(tabela.NomeSemArroba))
             {
-                objUserObjectMD.FormColumns.FormColumnAlias = coluna.Nome;
-                objUserObjectMD.FormColumns.FormColumnDescription = coluna.Descricao;
-                objUserObjectMD.FormColumns.Editable = SAPbobsCOM.BoYesNoEnum.tYES;
-                objUserObjectMD.FormColumns.Add();
+                int i = 1;
+                foreach (var coluna in tabela.Colunas)
+                {
+                    // tem que fazer essa gambiarra horrível, porque o primeiro elemento a ser colocado como UDO,
+                    // tem que obrigatóriamente ser o campo CODE.
+                    // como eu não passo ele como um campo que eu quero usar na definição de Lista de Colunas da minha Tabela
+                    // sempre que for o primeiro, inventa uma coluna ficticia e passa o Code.
+                    // horroroso mas é o jeito.
+                    if (i == 1)
+                    {
+                        AdicionarFindColumns(objUserObjectMD, new ColunaVarchar("Code", "Código", false);
+                    }
+
+                    AdicionarFindColumns(objUserObjectMD, coluna);
+
+                    i++;
+                }
 
                 if (objUserObjectMD.Update() != 0)
                 {
-                    throw new CustomException($"Erro ao tentar criar o campo {coluna.Nome} na tabela {tabela.NomeSemArroba} como UDO.\nErro: {oCompany.GetLastErrorDescription()}");
+                    throw new CustomException($"Erro ao tentar criar as colunas da tabela {tabela.NomeSemArroba} como UDO.\nErro: {oCompany.GetLastErrorDescription()}");
                 }
             }
 
             System.Runtime.InteropServices.Marshal.ReleaseComObject(objUserObjectMD);
             objUserObjectMD = null;
             GC.Collect();
+        }
+
+        private static void AdicionarFindColumns(SAPbobsCOM.UserObjectsMD objUserObjectMD, Coluna coluna)
+        {
+            objUserObjectMD.FindColumns.ColumnAlias = coluna.Nome;
+            objUserObjectMD.FindColumns.ColumnDescription = coluna.Descricao;
+            objUserObjectMD.FindColumns.Add();
         }
 
         private static void CriarTabelaComoUDO(TabelaUDO tabela)

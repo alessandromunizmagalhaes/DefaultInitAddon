@@ -5,7 +5,7 @@ namespace InitAddon
 {
     public class TabelaUDO : Tabela
     {
-        public TabelaUDO(string nome, string descricao, BoUTBTableType tipo, List<Coluna> colunas, UDOParams udoParams) : base(nome, descricao, tipo, colunas)
+        public TabelaUDO(string nome, string descricao, BoUTBTableType tipo, List<Coluna> colunas, UDOParams udoParams, List<Tabela> tabelasFilhas = null) : base(nome, descricao, tipo, colunas)
         {
             if (tipo == BoUTBTableType.bott_NoObject || tipo == BoUTBTableType.bott_NoObjectAutoIncrement)
                 throw new CustomException($"Erro ao instanciar tabela UDO. O tipo {tipo} não pode ser utilizado em tabelas UDO.");
@@ -18,8 +18,14 @@ namespace InitAddon
             CanLog = udoParams.CanLog;
             CanYearTransfer = udoParams.CanYearTransfer;
             ManageSeries = udoParams.ManageSeries;
+
+            if (tabelasFilhas != null)
+            {
+                TabelasFilhas = tabelasFilhas;
+            }
         }
 
+        public List<Tabela> TabelasFilhas { get; set; } = new List<Tabela>() { };
         public SAPbobsCOM.BoYesNoEnum CanCancel { get; set; }
         public SAPbobsCOM.BoYesNoEnum CanClose { get; set; }
         public SAPbobsCOM.BoYesNoEnum CanCreateDefaultForm { get; set; }
