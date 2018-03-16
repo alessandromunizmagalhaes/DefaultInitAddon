@@ -1,10 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace InitAddon
 {
     public static class SAPDatabase
     {
-        public static SAPbobsCOM.Company oCompany;
+        public static SAPbobsCOM.Company _company;
 
         #region :: Gestão de Tabelas
 
@@ -15,10 +16,10 @@ namespace InitAddon
 
             if (tabela_is_UDO)
             {
-                foreach (var tabelaFiliha in tabelaUDO.TabelasFilhas)
+                foreach (var tabelaFilha in tabelaUDO.TabelasFilhas)
                 {
                     // atenção para a recursividade aqui
-                    CriarTabela(tabelaFiliha);
+                    CriarTabela(tabelaFilha);
                 }
             }
 
@@ -39,17 +40,17 @@ namespace InitAddon
                 // regras SAP, senão vc não consegue adicionar o UDO via DI.
                 if (tabela_is_UDO)
                 {
-                    CriarTabelaComoUDO(tabelaUDO);
+                    DefinirTabelaComoUDO(tabelaUDO);
 
-                    CriarColunasComoUDO(tabelaUDO);
+                    DefinirColunasComoUDO(tabela.NomeSemArroba, tabela.Colunas, true);
                 }
             }
         }
 
-        private static void CriarTabelaComoUDO(TabelaUDO tabela)
+        private static void DefinirTabelaComoUDO(TabelaUDO tabela)
         {
             GC.Collect();
-            SAPbobsCOM.UserObjectsMD objUserObjectMD = oCompany.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oUserObjectsMD);
+            SAPbobsCOM.UserObjectsMD objUserObjectMD = _company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oUserObjectsMD);
 
             objUserObjectMD.TableName = tabela.NomeSemArroba;
             objUserObjectMD.Name = tabela.NomeSemArroba;
@@ -67,7 +68,7 @@ namespace InitAddon
 
             if (objUserObjectMD.Add() != 0)
             {
-                throw new CustomException($"Erro ao tentar criar a tabela {tabela.NomeSemArroba} como UDO.\nErro: {oCompany.GetLastErrorDescription()}");
+                throw new CustomException($"Erro ao tentar criar a tabela {tabela.NomeSemArroba} como UDO.\nErro: {_company.GetLastErrorDescription()}");
             }
 
             System.Runtime.InteropServices.Marshal.ReleaseComObject(objUserObjectMD);
@@ -75,47 +76,58 @@ namespace InitAddon
             GC.Collect();
         }
 
-        public static void CriarUserTable(Tabela tabela)
+        private static void CriarUserTable(Tabela tabela)
         {
             GC.Collect();
-            SAPbobsCOM.UserTablesMD oUserTablesMD = oCompany.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oUserTables);
+            SAPbobsCOM.UserTablesMD oUserTablesMD = _company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oUserTables);
 
             oUserTablesMD.TableName = tabela.NomeSemArroba;
             oUserTablesMD.TableDescription = tabela.Descricao;
             oUserTablesMD.TableType = tabela.Tipo;
 
-            var error_code = oUserTablesMD.Add();
-            if (error_code != 0)
+            if (oUserTablesMD.Add() != 0)
             {
-                throw new CustomException($"Erro ao tentar criar a tabela {tabela.NomeComArroba}.\nErro: {oCompany.GetLastErrorDescription()}");
+                throw new CustomException($"Erro ao tentar criar a tabela {tabela.NomeComArroba}.\nErro: {_company.GetLastErrorDescription()}");
             }
 
             oUserTablesMD = null;
             GC.Collect(); // Release the handle to the table
         }
 
-        public static bool ExcluirTabela(string nome_tabela)
+        public static void ExcluirTabela(string nomeSemArroba)
         {
             GC.Collect();
-            SAPbobsCOM.UserTablesMD objUserTablesMD = oCompany.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oUserTables);
-            objUserTablesMD.TableName = nome_tabela;
-            objUserTablesMD.GetByKey(nome_tabela);
+            SAPbobsCOM.UserObjectsMD oUDO = _company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oUserObjectsMD);
 
-            var error_code = objUserTablesMD.Remove();
+            if (oUDO.GetByKey(nomeSemArroba))
+            {
+                if (oUDO.Remove() != 0)
+                    throw new CustomException($"Erro ao tentar remover a definição de UDO da tabela {nomeSemArroba}.\nErro: {_company.GetLastErrorDescription()}");
+            }
+
+            System.Runtime.InteropServices.Marshal.ReleaseComObject(oUDO);
+            oUDO = null;
+
+            SAPbobsCOM.UserTablesMD objUserTablesMD = _company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oUserTables);
+            if (objUserTablesMD.GetByKey(nomeSemArroba))
+            {
+                objUserTablesMD.TableName = nomeSemArroba;
+
+                if (objUserTablesMD.Remove() != 0)
+                    throw new CustomException($"Erro ao tentar remover a tabela {nomeSemArroba}.\nErro: {_company.GetLastErrorDescription()}");
+            }
+            else
+            {
+                throw new CustomException($"tabela {nomeSemArroba} não encontrada para realizar remoção.");
+            }
 
             System.Runtime.InteropServices.Marshal.ReleaseComObject(objUserTablesMD);
             objUserTablesMD = null;
-
-            if (error_code == 0)
-                return true;
-            else
-                throw new CustomException($"Erro ao tentar remover a tabela {nome_tabela}.\nErro: {oCompany.GetLastErrorDescription()}");
-
         }
 
         public static bool ExisteTabela(string nome_tabela)
         {
-            SAPbobsCOM.Recordset rs = oCompany.GetBusinessObject(SAPbobsCOM.BoObjectTypes.BoRecordset);
+            SAPbobsCOM.Recordset rs = _company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.BoRecordset);
             string sql = "SELECT COUNT(*) FROM OUTB WHERE TableName = '" + nome_tabela + "'";
             rs.DoQuery(sql);
 
@@ -144,35 +156,49 @@ namespace InitAddon
 
             if (coluna.Obrigatoria)
             {
-                SetaCampoObrigatorio(nome_tabela, coluna.Nome);
+                SetarCampoComoObrigatorio(nome_tabela, coluna.Nome);
             }
 
             foreach (var valor_valido in coluna.ValoresValidos)
             {
-                AdicionaValorValido(nome_tabela, coluna.Nome, valor_valido.Valor, valor_valido.Descricao);
+                AdicionarValorValido(nome_tabela, coluna.Nome, valor_valido.Valor, valor_valido.Descricao);
             }
 
             if (!String.IsNullOrEmpty(coluna.ValorPadrao))
             {
-                SetaValorPadrao(nome_tabela, coluna.Nome, coluna.ValorPadrao);
+                SetarValorPadrao(nome_tabela, coluna.Nome, coluna.ValorPadrao);
             }
         }
 
-        private static void CriarColunasComoUDO(TabelaUDO tabela)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="nome_tabela"></param>
+        /// <param name="colunas"></param>
+        /// <param name="criar_campo_code_antes">
+        /// quando se está criando uma nova tabela
+        /// tem que fazer essa gambiarra horrível, porque o primeiro elemento a ser colocado como UDO,
+        /// tem que obrigatóriamente ser o campo CODE.
+        /// como eu não passo ele como um campo que eu quero usar na definição de Lista de Colunas da minha Tabela
+        /// sempre que for o primeiro, inventa uma coluna ficticia e passa o Code.
+        /// horroroso mas é o jeito.
+        /// </param>
+        public static void DefinirColunasComoUDO(string nome_tabela, List<Coluna> colunas, bool criar_campo_code_antes = false)
         {
             GC.Collect();
-            SAPbobsCOM.UserObjectsMD objUserObjectMD = oCompany.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oUserObjectsMD);
-            if (objUserObjectMD.GetByKey(tabela.NomeSemArroba))
+            SAPbobsCOM.UserObjectsMD objUserObjectMD = _company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oUserObjectsMD);
+            if (objUserObjectMD.GetByKey(nome_tabela))
             {
                 int i = 1;
-                foreach (var coluna in tabela.Colunas)
+                foreach (var coluna in colunas)
                 {
+                    // quando se está criando uma nova tabela
                     // tem que fazer essa gambiarra horrível, porque o primeiro elemento a ser colocado como UDO,
                     // tem que obrigatóriamente ser o campo CODE.
                     // como eu não passo ele como um campo que eu quero usar na definição de Lista de Colunas da minha Tabela
                     // sempre que for o primeiro, inventa uma coluna ficticia e passa o Code.
                     // horroroso mas é o jeito.
-                    if (i == 1)
+                    if (criar_campo_code_antes && i == 1)
                     {
                         AdicionarFindColumns(objUserObjectMD, new ColunaVarchar("Code", "Código", 0, false));
                     }
@@ -184,7 +210,7 @@ namespace InitAddon
 
                 if (objUserObjectMD.Update() != 0)
                 {
-                    throw new CustomException($"Erro ao tentar criar as colunas da tabela {tabela.NomeSemArroba} como UDO.\nErro: {oCompany.GetLastErrorDescription()}");
+                    throw new CustomException($"Erro ao tentar criar as colunas da tabela {nome_tabela} como UDO.\nErro: {_company.GetLastErrorDescription()}");
                 }
             }
 
@@ -193,10 +219,10 @@ namespace InitAddon
             GC.Collect();
         }
 
-        public static void CriarUserField(string nome_tabela, Coluna coluna)
+        private static void CriarUserField(string nome_tabela, Coluna coluna)
         {
             GC.Collect();
-            SAPbobsCOM.UserFieldsMD objUserFieldsMD = oCompany.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oUserFields);
+            SAPbobsCOM.UserFieldsMD objUserFieldsMD = _company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oUserFields);
             objUserFieldsMD.TableName = nome_tabela;
             objUserFieldsMD.Name = coluna.Nome;
             objUserFieldsMD.Description = coluna.Descricao;
@@ -258,11 +284,10 @@ namespace InitAddon
                 objUserFieldsMD.EditSize = coluna.Tamanho;
             }
 
-            var error_code = objUserFieldsMD.Add();
 
-            if (error_code != 0)
+            if (objUserFieldsMD.Add() != 0)
             {
-                throw new CustomException($"Erro ao tentar criar o campo {coluna.Nome}.\nErro: {oCompany.GetLastErrorDescription()}");
+                throw new CustomException($"Erro ao tentar criar o campo {coluna.Nome}.\nErro: {_company.GetLastErrorDescription()}");
             }
 
             System.Runtime.InteropServices.Marshal.ReleaseComObject(objUserFieldsMD);
@@ -276,29 +301,30 @@ namespace InitAddon
             objUserObjectMD.FindColumns.Add();
         }
 
-        public static bool ExcluirColuna(string nome_tabela, string nome_campo)
+        public static void ExcluirColuna(string nome_tabela, string nome_campo)
         {
             int FieldId = GetFieldId(nome_tabela, nome_campo);
 
             GC.Collect();
-            SAPbobsCOM.UserFieldsMD oUserFieldsMD = oCompany.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oUserFields);
+            SAPbobsCOM.UserFieldsMD oUserFieldsMD = _company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oUserFields);
             if (oUserFieldsMD.GetByKey(nome_tabela, FieldId))
             {
-                var error_code = oUserFieldsMD.Remove();
-                if (error_code != 0)
+                if (oUserFieldsMD.Remove() != 0)
                 {
                     System.Runtime.InteropServices.Marshal.ReleaseComObject(oUserFieldsMD);
-                    throw new CustomException($"Erro ao tentar remover o campo {nome_campo} da tabela {nome_tabela}.\nErro: {oCompany.GetLastErrorDescription()}");
+                    throw new CustomException($"Erro ao tentar remover o campo {nome_campo} da tabela {nome_tabela}.\nErro: {_company.GetLastErrorDescription()}");
                 }
             }
-
-            System.Runtime.InteropServices.Marshal.ReleaseComObject(oUserFieldsMD);
-            return true;
+            else
+            {
+                System.Runtime.InteropServices.Marshal.ReleaseComObject(oUserFieldsMD);
+                throw new CustomException($"Campo {nome_campo} não encontrado na tabela {nome_tabela} para realizar a exclusão.");
+            }
         }
 
         public static bool ExisteColuna(string nome_tabela, string nome_campo)
         {
-            SAPbobsCOM.Recordset rs = oCompany.GetBusinessObject(SAPbobsCOM.BoObjectTypes.BoRecordset);
+            SAPbobsCOM.Recordset rs = _company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.BoRecordset);
             var sql = $"SELECT COUNT(*) FROM CUFD (NOLOCK) WHERE TableID='{nome_tabela}' and AliasID='{nome_campo}'";
 
             rs.DoQuery(sql);
@@ -319,7 +345,7 @@ namespace InitAddon
 
         #region :: Valores válidos, Valores Padrão e Obrigatoriedade
 
-        public static void AdicionaValorValido(string nome_tabela, string nome_campo, string valor, string descricao)
+        public static void AdicionarValorValido(string nome_tabela, string nome_campo, string valor, string descricao)
         {
             bool valorExiste = false;
             int campoID = GetFieldId(nome_tabela, nome_campo);
@@ -331,7 +357,7 @@ namespace InitAddon
             else
             {
                 GC.Collect();
-                SAPbobsCOM.UserFieldsMD objUserFieldsMD = oCompany.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oUserFields);
+                SAPbobsCOM.UserFieldsMD objUserFieldsMD = _company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oUserFields);
                 objUserFieldsMD.GetByKey(nome_tabela, campoID);
                 SAPbobsCOM.ValidValuesMD oValidValues;
                 oValidValues = objUserFieldsMD.ValidValues;
@@ -357,7 +383,7 @@ namespace InitAddon
 
                     if (error_code != 0)
                     {
-                        throw new CustomException($"Erro ao tentar adicionar valor válido {valor} na coluna {nome_campo} na tabela {nome_tabela}.\nErro: {oCompany.GetLastErrorDescription()}");
+                        throw new CustomException($"Erro ao tentar adicionar valor válido {valor} na coluna {nome_campo} na tabela {nome_tabela}.\nErro: {_company.GetLastErrorDescription()}");
                     }
                 }
                 else
@@ -365,33 +391,32 @@ namespace InitAddon
                     error_code = objUserFieldsMD.Update();
                     if (error_code != 0)
                     {
-                        throw new CustomException($"Erro ao tentar atualizar valor válido {valor} na coluna {nome_campo} na tabela {nome_tabela}.\nErro: {oCompany.GetLastErrorDescription()}");
+                        throw new CustomException($"Erro ao tentar atualizar valor válido {valor} na coluna {nome_campo} na tabela {nome_tabela}.\nErro: {_company.GetLastErrorDescription()}");
                     }
                 }
             }
         }
 
-        public static bool SetaCampoObrigatorio(string nome_tabela, string nome_campo)
+        public static bool SetarCampoComoObrigatorio(string nome_tabela, string nome_campo)
         {
             int campoID = GetFieldId(nome_tabela, nome_campo);
             SAPbobsCOM.UserFieldsMD objUserFieldsMD;
             GC.Collect();
-            objUserFieldsMD = oCompany.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oUserFields);
+            objUserFieldsMD = _company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oUserFields);
 
             if (objUserFieldsMD.GetByKey(nome_tabela, campoID))
             {
                 objUserFieldsMD.Mandatory = SAPbobsCOM.BoYesNoEnum.tYES;
-                var CodErroDB = objUserFieldsMD.Update();
 
-                if (CodErroDB != 0)
+                if (objUserFieldsMD.Update() != 0)
                 {
-                    throw new CustomException($"Erro ao tentar tornar o campo {nome_campo} da tabela {nome_tabela} obrigatório.\nErro: {oCompany.GetLastErrorDescription()}");
+                    throw new CustomException($"Erro ao tentar tornar o campo {nome_campo} da tabela {nome_tabela} obrigatório.\nErro: {_company.GetLastErrorDescription()}");
                 }
             }
             return true;
         }
 
-        public static bool SetaValorPadrao(string nome_tabela, string nome_campo, string valor)
+        public static bool SetarValorPadrao(string nome_tabela, string nome_campo, string valor)
         {
             bool valorExiste = false;
             int campoID = GetFieldId(nome_tabela, nome_campo);
@@ -406,16 +431,15 @@ namespace InitAddon
             {
                 GC.Collect();
                 SAPbobsCOM.UserFieldsMD objUserFieldsMD;
-                objUserFieldsMD = oCompany.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oUserFields);
+                objUserFieldsMD = _company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oUserFields);
 
                 if (objUserFieldsMD.GetByKey(nome_tabela, campoID))
                     objUserFieldsMD.DefaultValue = valor;
 
-                var error_code = objUserFieldsMD.Update();
-                if (error_code != 0)
+                if (objUserFieldsMD.Update() != 0)
                 {
                     objUserFieldsMD = null;
-                    throw new CustomException($"Erro ao tentar setar o valor padrão {valor} para o campo {nome_campo} da tabela {nome_tabela}.\nErro: {oCompany.GetLastErrorDescription()}");
+                    throw new CustomException($"Erro ao tentar setar o valor padrão {valor} para o campo {nome_campo} da tabela {nome_tabela}.\nErro: {_company.GetLastErrorDescription()}");
                 }
                 else
                 {
@@ -431,7 +455,7 @@ namespace InitAddon
 
         public static bool ExisteValorValido(string nome_tabela, int campoID, string valor)
         {
-            SAPbobsCOM.Recordset rs = oCompany.GetBusinessObject(SAPbobsCOM.BoObjectTypes.BoRecordset);
+            SAPbobsCOM.Recordset rs = _company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.BoRecordset);
             string sql =
                 $@"SELECT COUNT(*) FROM UFD1 (NOLOCK) 
                     WHERE TableID='{nome_tabela}' AND
@@ -451,7 +475,7 @@ namespace InitAddon
 
         public static bool ExisteValorPadraoSetado(string nome_tabela, int campoID, string valor)
         {
-            SAPbobsCOM.Recordset rs = oCompany.GetBusinessObject(SAPbobsCOM.BoObjectTypes.BoRecordset);
+            SAPbobsCOM.Recordset rs = _company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.BoRecordset);
             string sql = $@"SELECT COUNT(*) FROM CUFD (NOLOCK) 
             Where TableID='{nome_tabela}' AND
                   FieldID='{campoID}' AND
@@ -477,7 +501,7 @@ namespace InitAddon
 
         public static int GetFieldId(string nome_tabela, string nome_campo)
         {
-            SAPbobsCOM.Recordset rs = oCompany.GetBusinessObject(SAPbobsCOM.BoObjectTypes.BoRecordset);
+            SAPbobsCOM.Recordset rs = _company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.BoRecordset);
             string sql = $@" SELECT FieldID FROM CUFD (NOLOCK)  WHERE TableID='{nome_tabela}' AND AliasID='{nome_campo}'";
             rs.DoQuery(sql);
             if (rs.Fields.Item(0).Value >= 0)
@@ -498,7 +522,7 @@ namespace InitAddon
 
         public static void RecebeCompany(SAPbobsCOM.Company company)
         {
-            oCompany = company;
+            _company = company;
         }
 
         #endregion

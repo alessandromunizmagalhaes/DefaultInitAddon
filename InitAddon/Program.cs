@@ -7,9 +7,9 @@ namespace InitAddon
 
     static class Program
     {
-        private static string AddonName = "Addon Example";
-        public static SAPbouiCOM.Application SBOApplication;
-        public static SAPbobsCOM.Company oCompany;
+        private static string _addonName = "Addon Example";
+        public static SAPbouiCOM.Application _sBOApplication;
+        public static SAPbobsCOM.Company _company;
 
         [STAThread]
         static void Main()
@@ -22,7 +22,7 @@ namespace InitAddon
 
             DeclararEventos();
 
-            Dialogs.Success(":: " + AddonName + " :: Iniciado.");
+            Dialogs.Success(":: " + _addonName + " :: Iniciado.");
 
             // deixa a aplicação ativa
             System.Windows.Forms.Application.Run();
@@ -33,10 +33,10 @@ namespace InitAddon
             SAPConnection.SBOApplicationHandler applicationHandler = null;
             applicationHandler += Dialogs.RecebeSBOApplication;
             applicationHandler += SAPMenus.RecebeSBOApplication;
-            applicationHandler += applicationParam => SBOApplication = applicationParam;
+            applicationHandler += applicationParam => _sBOApplication = applicationParam;
 
             SAPConnection.CompanyHandler companyHandler = null;
-            companyHandler += companyParam => oCompany = companyParam;
+            companyHandler += companyParam => _company = companyParam;
             companyHandler += SAPDatabase.RecebeCompany;
 
             SAPConnection.Connect(applicationHandler, companyHandler);
@@ -44,11 +44,11 @@ namespace InitAddon
 
         private static void CriarEstruturaDeDados()
         {
-            Dialogs.Info(":: " + AddonName + " :: Criando tabelas e estruturas de dados ...");
+            Dialogs.Info(":: " + _addonName + " :: Criando tabelas e estruturas de dados ...");
 
             try
             {
-                oCompany.StartTransaction();
+                _company.StartTransaction();
 
                 var tabela_detalhe_item = new Tabela("U_UPD_CCD1", "Detalhes do item Previsto"
                     , SAPbobsCOM.BoUTBTableType.bott_DocumentLines
@@ -70,14 +70,24 @@ namespace InitAddon
                         new ColunaDate("DtPrEnt","Data Previsão Entrega",true),
                         new ColunaDate("DtPrPgt","Data Programa Entrega",true),
                         new ColunaInt("ModCtto","Modalidade Contrato",true),
+                        new ColunaInt("teste","teste",true),
                     }
                     , new UDOParams() { CanDelete = SAPbobsCOM.BoYesNoEnum.tNO }
                     , new List<Tabela>() { tabela_detalhe_item }
                 );
 
-                SAPDatabase.CriarTabela(tabela_contratos);
+                //SAPDatabase.CriarTabela(tabela_contratos);
 
-                oCompany.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_Commit);
+
+                //SAPDatabase.ExcluirColuna(tabela_contratos.NomeComArroba, "teste");
+
+                var coluna_teste = new ColunaInt("testex", "xtestex", true);
+                //SAPDatabase.CriarColuna(tabela_contratos.NomeComArroba, coluna_teste);
+                //SAPDatabase.DefinirColunasComoUDO(tabela_contratos.NomeComArroba, new List<Coluna>() { coluna_teste });
+
+                SAPDatabase.ExcluirTabela(tabela_contratos.NomeSemArroba);
+
+                _company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_Commit);
             }
             catch (CustomException e)
             {
@@ -85,14 +95,14 @@ namespace InitAddon
             }
             catch (Exception e)
             {
-                oCompany.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_RollBack);
+                _company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_RollBack);
                 Dialogs.PopupError("Erro interno.\nErro: " + e.Message);
             }
         }
 
         private static void CriarMenus()
         {
-            Dialogs.Info(":: " + AddonName + " :: Criando menus ...");
+            Dialogs.Info(":: " + _addonName + " :: Criando menus ...");
 
             try
             {
@@ -108,7 +118,7 @@ namespace InitAddon
 
         private static void DeclararEventos()
         {
-            SBOApplication.AppEvent += SBOApplication_AppEvent;
+            _sBOApplication.AppEvent += SBOApplication_AppEvent;
         }
 
         #region :: Declaração Eventos
