@@ -43,8 +43,36 @@ namespace InitAddon
                     DefinirTabelaComoUDO(tabelaUDO);
 
                     DefinirColunasComoUDO(tabela.NomeSemArroba, tabela.Colunas, true);
+
+                    DefinirTabelasComoFilhasDoUDO(tabela.NomeSemArroba, tabelaUDO.TabelasFilhas);
                 }
             }
+        }
+
+        private static void DefinirTabelasComoFilhasDoUDO(string nomeTabelaPai, List<Tabela> tabelasFilhas)
+        {
+            GC.Collect();
+            SAPbobsCOM.UserObjectsMD objUserObjectMD = _company.GetBusinessObject(SAPbobsCOM.BoObjectTypes.oUserObjectsMD);
+            if (objUserObjectMD.GetByKey(nomeTabelaPai))
+            {
+                // tem que percorrer denovo todas as tabelas filhas, para seta-las como filhas.
+                // não dá pra aproveitar o for lá encima, no momento que o for lá emcima é executado, o UDO pai não existe,
+                // então quando vai fazer GETBYKEY() com o nome do pai, sempre retorna false.
+                foreach (var tabelaFilha in tabelasFilhas)
+                {
+                    objUserObjectMD.ChildTables.TableName = tabelaFilha.NomeSemArroba;
+                    objUserObjectMD.ChildTables.Add();
+                }
+
+                if (objUserObjectMD.Update() != 0)
+                {
+                    throw new CustomException($"Erro ao tentar adicionar as tabela filhas da tabela {nomeTabelaPai} que é UDO.\nErro: {_company.GetLastErrorDescription()}");
+                }
+            }
+
+            System.Runtime.InteropServices.Marshal.ReleaseComObject(objUserObjectMD);
+            objUserObjectMD = null;
+            GC.Collect();
         }
 
         private static void DefinirTabelaComoUDO(TabelaUDO tabela)
@@ -200,10 +228,10 @@ namespace InitAddon
                     // horroroso mas é o jeito.
                     if (criar_campo_code_antes && i == 1)
                     {
-                        AdicionarFindColumns(objUserObjectMD, new ColunaVarchar("Code", "Código", 0, false));
+                        AdicionarFindColumnsAoObjeto(objUserObjectMD, new ColunaVarchar("Code", "Código", 0, false));
                     }
 
-                    AdicionarFindColumns(objUserObjectMD, coluna);
+                    AdicionarFindColumnsAoObjeto(objUserObjectMD, coluna);
 
                     i++;
                 }
@@ -294,7 +322,7 @@ namespace InitAddon
             objUserFieldsMD = null;
         }
 
-        private static void AdicionarFindColumns(SAPbobsCOM.UserObjectsMD objUserObjectMD, Coluna coluna)
+        private static void AdicionarFindColumnsAoObjeto(SAPbobsCOM.UserObjectsMD objUserObjectMD, Coluna coluna)
         {
             objUserObjectMD.FindColumns.ColumnAlias = coluna.Nome;
             objUserObjectMD.FindColumns.ColumnDescription = coluna.Descricao;

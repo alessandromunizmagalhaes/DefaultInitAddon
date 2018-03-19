@@ -76,7 +76,7 @@ namespace InitAddon
                     , new List<Tabela>() { tabela_detalhe_item }
                 );
 
-                //SAPDatabase.CriarTabela(tabela_contratos);
+                SAPDatabase.CriarTabela(tabela_contratos);
 
 
                 //SAPDatabase.ExcluirColuna(tabela_contratos.NomeComArroba, "teste");
@@ -85,7 +85,7 @@ namespace InitAddon
                 //SAPDatabase.CriarColuna(tabela_contratos.NomeComArroba, coluna_teste);
                 //SAPDatabase.DefinirColunasComoUDO(tabela_contratos.NomeComArroba, new List<Coluna>() { coluna_teste });
 
-                SAPDatabase.ExcluirTabela(tabela_contratos.NomeSemArroba);
+                // SAPDatabase.ExcluirTabela(tabela_contratos.NomeSemArroba);
 
                 _company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_Commit);
             }

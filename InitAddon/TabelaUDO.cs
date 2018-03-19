@@ -23,6 +23,11 @@ namespace InitAddon
             {
                 foreach (var tabelaFilha in tabelasFilhas)
                 {
+                    if (tabelaFilha is TabelaUDO)
+                    {
+                        throw new CustomException($"A tabela filha {tabelaFilha.NomeSemArroba} não pode ser do tipo UDO na declaração do objeto");
+                    }
+
                     if (!TipoTabelaFilhaIgualTipoTabelaPai(tabelaFilha, this))
                     {
                         throw new CustomException($"O tipo da tabela filha {tabelaFilha.NomeSemArroba} é diferente do tipo da tabela pai {this.NomeSemArroba}");
