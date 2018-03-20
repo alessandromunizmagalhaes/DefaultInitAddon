@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SAPHelper;
+using System;
 using System.Collections.Generic;
 
 namespace InitAddon
@@ -8,6 +9,7 @@ namespace InitAddon
     static class Program
     {
         private static string _addonName = "Addon Example";
+        private static string _startupath = System.Windows.Forms.Application.StartupPath;
         public static SAPbouiCOM.Application _sBOApplication;
         public static SAPbobsCOM.Company _company;
 
@@ -32,14 +34,22 @@ namespace InitAddon
         {
             SAPConnection.SBOApplicationHandler applicationHandler = null;
             applicationHandler += Dialogs.RecebeSBOApplication;
-            applicationHandler += SAPMenus.RecebeSBOApplication;
+            applicationHandler += Menu.RecebeSBOApplication;
             applicationHandler += applicationParam => _sBOApplication = applicationParam;
 
             SAPConnection.CompanyHandler companyHandler = null;
             companyHandler += companyParam => _company = companyParam;
-            companyHandler += SAPDatabase.RecebeCompany;
+            companyHandler += Database.RecebeCompany;
 
-            SAPConnection.Connect(applicationHandler, companyHandler);
+            try
+            {
+                SAPConnection.Connect(applicationHandler, companyHandler);
+            }
+            catch (Exception e)
+            {
+                System.Windows.Forms.MessageBox.Show(e.Message);
+                System.Windows.Forms.Application.Exit();
+            }
         }
 
         private static void CriarEstruturaDeDados()
@@ -76,20 +86,18 @@ namespace InitAddon
                     , new List<Tabela>() { tabela_detalhe_item }
                 );
 
-                SAPDatabase.CriarTabela(tabela_contratos);
+                //Database.ExcluirColuna(tabela_contratos.NomeComArroba, "teste");
 
 
-                //SAPDatabase.ExcluirColuna(tabela_contratos.NomeComArroba, "teste");
+                //var coluna_teste = new ColunaInt("testex", "xtestex", true);
+                //Database.CriarColuna(tabela_contratos.NomeComArroba, coluna_teste);
+                //Database.DefinirColunasComoUDO(tabela_contratos.NomeComArroba, new List<Coluna>() { coluna_teste });
 
-                var coluna_teste = new ColunaInt("testex", "xtestex", true);
-                //SAPDatabase.CriarColuna(tabela_contratos.NomeComArroba, coluna_teste);
-                //SAPDatabase.DefinirColunasComoUDO(tabela_contratos.NomeComArroba, new List<Coluna>() { coluna_teste });
-
-                // SAPDatabase.ExcluirTabela(tabela_contratos.NomeSemArroba);
+                //Database.ExcluirTabela(tabela_contratos.NomeSemArroba);
 
                 _company.EndTransaction(SAPbobsCOM.BoWfTransOpt.wf_Commit);
             }
-            catch (CustomException e)
+            catch (DatabaseException e)
             {
                 Dialogs.PopupError(e.Message);
             }
@@ -106,9 +114,9 @@ namespace InitAddon
 
             try
             {
-                SAPMenus.RemoverMenus();
+                Menu.RemoverMenus(_startupath + @"/remover_menus.xml");
 
-                SAPMenus.CriarMenus();
+                Menu.CriarMenus(_startupath + @"/criar_menus.xml");
             }
             catch (Exception e)
             {
@@ -127,7 +135,7 @@ namespace InitAddon
         {
             if (EventType == SAPbouiCOM.BoAppEventTypes.aet_ShutDown)
             {
-                SAPMenus.RemoverMenus();
+                Menu.RemoverMenus(_startupath + @"/remover_menus.xml");
             }
         }
 

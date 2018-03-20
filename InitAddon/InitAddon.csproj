@@ -45,29 +45,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Coluna.cs" />
-    <Compile Include="ColunaDate.cs" />
-    <Compile Include="ColunaImage.cs" />
-    <Compile Include="ColunaInt.cs" />
-    <Compile Include="ColunaLink.cs" />
-    <Compile Include="ColunaPercent.cs" />
-    <Compile Include="ColunaPrice.cs" />
-    <Compile Include="ColunaQuantity.cs" />
-    <Compile Include="ColunaSum.cs" />
-    <Compile Include="ColunaText.cs" />
-    <Compile Include="ColunaTime.cs" />
-    <Compile Include="ColunaVarchar.cs" />
-    <Compile Include="CustomException.cs" />
-    <Compile Include="SAPConnection.cs" />
-    <Compile Include="Dialogs.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="SAPDatabase.cs" />
-    <Compile Include="SAPMenus.cs" />
-    <Compile Include="Tabela.cs" />
-    <Compile Include="TabelaUDO.cs" />
-    <Compile Include="UDOParams.cs" />
-    <Compile Include="ValorValido.cs" />
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
@@ -113,6 +92,12 @@
   <ItemGroup>
     <Content Include="bin\Debug\criar_menus.xml" />
     <Content Include="bin\Debug\remover_menus.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\SAPDatabase\SAPDatabase\SAPHelper.csproj">
+      <Project>{78504524-e142-402e-aa96-0e1a9b44c252}</Project>
+      <Name>SAPHelper</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
